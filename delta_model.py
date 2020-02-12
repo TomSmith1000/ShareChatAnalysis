@@ -10,6 +10,7 @@ import re
 import matplotlib.pyplot as plt
 import nltk
 import numpy as np
+import csv
 from nltk.corpus import stopwords
 from nltk.tokenize import TweetTokenizer
 import pandas as pd
@@ -108,7 +109,6 @@ skip_grams_udf = udf(skip_grams, ArrayType(StringType()))
 df_skip_grams1 = df_pos_tagger1.withColumn('skip_grams', skip_grams_udf(df_pos_tagger1['POS']))
 
 # Open file containing the most common skip grams I had previously found from analyzing a previous sample
-import csv
 
 with open('skip_grams.csv', 'r') as f:
     reader = csv.reader(f)
@@ -117,7 +117,6 @@ with open('skip_grams.csv', 'r') as f:
 skips = com_skips[0]
 
 # Filter through each user's POS skip-grams and keep them if they are in the most commonly found skip-grams
-
 
 def skip_grams_filter(s):
     return [i for i in s if i in skips]
@@ -213,8 +212,11 @@ df_all_words2 = df_stop_words2.select("username", concat_arrays_udf("stop_words"
 tf2 = hashingTF.transform(df_all_words2)
 
 tf_norm2 = Normalizer(inputCol="features", outputCol="features_norm", p=1).transform(tf2)
-
+print("/n /n tf_norm2 /n /n ")
+print(tf_norm2)
 scaled2 = scale_fit1.transform(tf_norm2)
+print("/n /n scaled2 /n /n ")
+print(scaled2)
 
 # Calculate the cosine similarity for each username in subset 1 against every username in subset 2
 sims1 = scaled1.select('username', 'scaled')
@@ -234,7 +236,6 @@ pdf = pd.DataFrame(similarities)
 print(pdf)
 
 # split the cosines of usernames who match with the usernames who don't match
-cols = pdf.columns
 mask = []
 for i in pdf:
     mask.append(i == pdf.index)
@@ -242,12 +243,21 @@ mask = np.array(mask)
 mask = mask.T
 
 matches = pdf.values[mask]
+print(matches)
 non_matches = pdf.values[~mask]
+print(non_matches)
 
 # Calculate accuracy of the model
 non_mas = non_matches.reshape(len(matches), -1)
 non_mas_max = np.max(non_mas, axis=1)
 np.sum(matches > non_mas_max) / len(matches)
+print("Accuracy " + str(np.sum(matches > non_mas_max) / len(matches)))
+
+plt.hist(matches, label='matches')
+plt.hist(non_matches, label='non-matches')
+plt.xlabel('Cosine Similarity')
+plt.legend()
+plt.savefig('match_distro1.png')
 
 # Read saved matches and non-matches
 #with open('nonmatches.csv', 'r') as f:
@@ -274,7 +284,7 @@ np.sum(matches > non_mas_max) / len(matches)
 # Dendogram
 sparkdf = scaled1.select('username', 'scaled')
 pandaDF = sparkdf.toPandas()
-series = pandaDF['scaled'].apply(lambda x: np.array(x.toArray())).to_numpy.values.reshape(-1, 1)
+series = pandaDF['scaled'].apply(lambda x: np.array(x.toArray())).to_numpy().reshape(-1, 1)
 features = np.apply_along_axis(lambda x: x[0], 1, series)
 df = pd.DataFrame(features, index=pandaDF['username'])
 
