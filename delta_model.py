@@ -22,20 +22,23 @@ spark = (
     ps.sql.SparkSession.builder
     .master("local[4]")
     .appName("project1")
+    .config("spark.network.timeout", "8000s")
+    .config("spark.executor.heartbeatInterval", "3000s")
+    .config("spark.sql.execution.arrow.enabled", "true")
     .getOrCreate()
 )
-
 sc = spark.sparkContext
+print(sc.getConf().getAll())
 
 
 # Read sharded json files
 #df = spark.read.json("*.json")
-df = spark.read.format("csv").option("header", "true").option("mode", "DROPMALFORMED").load("comments.csv")
+df = spark.read.format("csv").option("header", "true").option("mode", "DROPMALFORMED").load("users_comments.csv")
 
 # Find usernames that have more than 400 comments so that splitting them leaves us with at least 200 comments
 new_df = df.groupby('username').agg(F.count('comment'))
 new_df.show()
-usernames = new_df.filter(new_df['count(comment)'] > 400).select('username')
+usernames = new_df.filter(new_df['count(comment)'] > 50).select('username')
 
 # Filter the original data with usernames that have more than 400 comments
 filtered_df = usernames.join(df, ['username'], 'left')
