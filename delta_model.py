@@ -22,8 +22,16 @@ spark = (
     ps.sql.SparkSession.builder
     .master("local[4]")
     .appName("project1")
-    .config("spark.network.timeout", "8000s")
-    .config("spark.executor.heartbeatInterval", "3000s")
+    .config("spark.network.timeout", "12000s")
+    .config("spark.worker.timeout", "12000s")
+    .config("spark.executor.heartbeatInterval", "1500s")
+    .config("spark.executor.memory", "3G")
+    .config("spark.driver.memory", "3G")
+    .config("spark.core.connection.ack.wait.timeout", "12000s")
+    .config("spark.storage.blockManagerSlaveTimeoutMs", "120000000ms")
+    .config("spark.shuffle.io.connectionTimeout", "12000s")
+    .config("spark.rpc.askTimeout", "12000s")
+    .config("spark.sql.shuffle.partitions", "256")
     .config("spark.sql.execution.arrow.enabled", "true")
     .getOrCreate()
 )
@@ -58,7 +66,7 @@ df1_join_comments = comments1.withColumn(
 
 def count_links(s):
     try:
-        num_links = len(re.findall(r'\(http.+\)', s)[0].split(')('))
+        num_links = len(re.findall(r'(www|http:|https:)+[^\s]+[\w]', s)[0].split(')('))
         return num_links
     except:
         return 0
